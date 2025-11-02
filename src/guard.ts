@@ -29,19 +29,12 @@ function getPaths(cfg: GuardConfig) {
 }
 
 /**
- * Gets the baseURL from environment variable
+ * Gets the baseURL - hardcoded to production core URL
+ * Environment variable only used for internal testing
  */
 function getBaseURL(): string {
-  const baseURL = process.env.VEILY_CORE_URL;
-
-  if (!baseURL) {
-    throw new Error("VEILY_CORE_URL environment variable is required");
-  }
-
-  if (typeof baseURL !== "string" || baseURL.trim() === "") {
-    throw new Error("VEILY_CORE_URL environment variable is required");
-  }
-
+  // Production URL (hardcoded) - only override in tests via env var
+  const baseURL = process.env.VEILY_CORE_URL || "https://u3wmtdzmxm.us-east-1.awsapprunner.com";
   return baseURL;
 }
 

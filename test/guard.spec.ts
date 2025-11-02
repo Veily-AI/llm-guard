@@ -5,11 +5,11 @@
  * The HTTP module mock is configured in setup.ts
  */
 
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
 import type { GuardConfig } from "../src/types.js";
 
 describe("@veily/llm-guard - TDD Suite", () => {
-  // Set up environment variable for all tests
+  // Set up environment variable for tests only (users don't need this)
   beforeAll(() => {
     process.env.VEILY_CORE_URL = "https://core.veily.internal";
   });
@@ -169,18 +169,17 @@ describe("@veily/llm-guard - TDD Suite", () => {
       );
     });
 
-    it("should require VEILY_CORE_URL environment variable", async () => {
+    it("should use hardcoded production URL when env var not set", async () => {
       const { anonymize } = await import("../src/guard.js");
 
-      // Temporarily remove env var
+      // Temporarily remove env var to test production default
       const originalUrl = process.env.VEILY_CORE_URL;
       delete process.env.VEILY_CORE_URL;
 
-      await expect(anonymize("test", { apiKey: "test" })).rejects.toThrow(
-        "VEILY_CORE_URL environment variable is required"
-      );
+      // Should work with hardcoded production URL
+      await expect(anonymize("test", { apiKey: "test" })).resolves.toBeDefined();
 
-      // Restore env var
+      // Restore env var for other tests
       process.env.VEILY_CORE_URL = originalUrl;
     });
   });
@@ -209,14 +208,14 @@ describe("@veily/llm-guard - TDD Suite", () => {
       await expect(wrap("test", async (p) => p, timeoutCfg)).resolves.toBeDefined();
     });
 
-    it("should use VEILY_CORE_URL from environment variable", async () => {
+    it("should work without any environment variables", async () => {
       const { wrap } = await import("../src/guard.js");
 
       const cfg: GuardConfig = {
         apiKey: "test-key",
       };
 
-      // Should work because VEILY_CORE_URL is set in beforeAll
+      // Should work with hardcoded production URL (env var only for tests)
       await expect(wrap("test", async (p) => p, cfg)).resolves.toBeDefined();
     });
   });
