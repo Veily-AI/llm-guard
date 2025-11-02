@@ -1,8 +1,9 @@
 # @veily/llm-guard - Technical Overview
 
-> **Version:** 0.1.0  
+> **Version:** 0.1.3  
 > **Last Updated:** November 2, 2025  
-> **Production Core URL:** `https://u3wmtdzmxm.us-east-1.awsapprunner.com`
+> **Production Core URL:** `https://u3wmtdzmxm.us-east-1.awsapprunner.com`  
+> **Protocol:** HTTPS (HTTP/1.1 with keep-alive)
 
 ## 📋 Table of Contents
 
@@ -36,10 +37,11 @@
     │     @veily/llm-guard (npm package)    │
     │  ┌────────────┐    ┌──────────────┐  │
     │  │  guard.ts  │───▶│   http.ts    │  │
-    │  │ (API layer)│    │ (HTTP/2 pool)│  │
+    │  │ (API layer)│    │ (HTTPS pool) │  │
     │  └────────────┘    └──────┬───────┘  │
     └──────────────────────────┼───────────┘
                                │
+                               │ HTTPS with keep-alive
                                │ POST /v1/anonymize
                                │ POST /v1/restore
                                │ GET  /v1/metrics
@@ -58,9 +60,10 @@
 
 1. **Zero Configuration**: Core URL is hardcoded, users only provide API key
 2. **Infrastructure Abstraction**: Users never know where core is hosted
-3. **HTTP/2 Performance**: Keep-alive connections with connection pooling
+3. **HTTPS Performance**: Keep-alive connections with connection pooling
 4. **Type Safety**: Full TypeScript support with strict types
 5. **Zero Dependencies**: No runtime dependencies
+6. **Cloud Compatible**: Works with AWS App Runner, GCP Cloud Run, Azure
 
 ---
 
@@ -245,9 +248,9 @@ type AnonymizeResult = {
 
 ---
 
-### 2. `http.ts` - HTTP/2 Transport Layer
+### 2. `http.ts` - HTTPS Transport Layer
 
-**Purpose**: High-performance HTTP/2 client with connection pooling
+**Purpose**: High-performance HTTPS client with connection pooling and keep-alive
 
 #### Key Features
 
@@ -463,37 +466,37 @@ export type {
 
 ## 🚀 Performance Optimizations
 
-### 1. HTTP/2 Multiplexing
+### 1. HTTPS Keep-Alive
 
 ```
-Single TCP Connection
+Persistent Connection with Keep-Alive
 ─────────────────────────────────────
 Request 1 (anonymize) ──┐
-Request 2 (restore)  ───┤  All use same
-Request 3 (metrics)  ───┤  connection
-Request 4 (anonymize) ──┘  simultaneously
+Request 2 (restore)  ───┤  Reuse same
+Request 3 (metrics)  ───┤  TCP connection
+Request 4 (anonymize) ──┘  via keep-alive
 
 Benefits:
-- No connection overhead per request
-- Parallel requests without blocking
-- Automatic header compression
+- No TLS handshake overhead per request
+- Connection reuse reduces latency
+- Compatible with all cloud providers
 ```
 
 ### 2. Connection Pooling Benchmark
 
 ```typescript
-// WITHOUT pool (naive implementation)
+// WITHOUT keep-alive (naive implementation)
 for (let i = 0; i < 100; i++) {
   await anonymize(...); // Creates new connection each time
 }
-// Total time: ~10-15 seconds (100-150ms each)
+// Total time: ~15-20 seconds (150-200ms each)
 
-// WITH pool (current implementation)
+// WITH keep-alive (current implementation)
 for (let i = 0; i < 100; i++) {
   await anonymize(...); // Reuses connection
 }
-// Total time: ~3-5 seconds (30-50ms each)
-// Performance gain: 3-5x faster
+// Total time: ~6-8 seconds (60-80ms each)
+// Performance gain: 2-3x faster
 ```
 
 ### 3. Lazy Initialization
@@ -561,7 +564,7 @@ if (options?.ttl && (options.ttl < 1 || options.ttl > 86400)) {
 throw new Error(`Failed to connect to ${baseURL}: ${error.stack}`);
 
 // ✅ GOOD: Generic, no sensitive info
-throw new Error("HTTP/2 request timeout");
+throw new Error("HTTP request timeout");
 
 // ❌ BAD: Leaks PII
 console.log(`Anonymizing: "${prompt}"`);
@@ -614,7 +617,7 @@ const baseURL = "https://u3wmtdzmxm.us-east-1.awsapprunner.com";
 | ----------- | ----------- | ------------------------------- |
 | Unit Tests  | Jest        | Mock HTTP transport, test logic |
 | Type Tests  | TypeScript  | Ensure type safety              |
-| Integration | Mock server | Test HTTP/2 flows               |
+| Integration | Mock server | Test HTTPS flows                |
 
 ### Current Test Coverage
 
@@ -682,7 +685,7 @@ jest.unstable_mockModule("../src/http.js", () => ({
 │                                            │
 │  ┌──────────────┐      ┌───────────────┐  │
 │  │  App Servers │─────▶│  Veily Core   │  │
-│  │ (llm-guard)  │ HTTP/2│ (Production)  │  │
+│  │ (llm-guard)  │ HTTPS │ (Production)  │  │
 │  └──────────────┘      └───────────────┘  │
 │         │                                  │
 └─────────┼──────────────────────────────────┘
@@ -768,8 +771,8 @@ Following [Semantic Versioning](https://semver.org/):
 
 ## 📚 References
 
-- [HTTP/2 RFC 7540](https://httpwg.org/specs/rfc7540.html)
-- [Node.js HTTP/2 API](https://nodejs.org/api/http2.html)
+- [Node.js HTTPS API](https://nodejs.org/api/https.html)
+- [HTTP Keep-Alive](https://en.wikipedia.org/wiki/HTTP_persistent_connection)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [OWASP API Security Top 10](https://owasp.org/www-project-api-security/)
 - [Semantic Versioning](https://semver.org/)

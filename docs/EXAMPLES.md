@@ -4,13 +4,15 @@ Complete examples showing how to use `@veily/llm-guard` to protect LLM prompts.
 
 ## Prerequisites
 
-Install the package:
-
 ```bash
 npm install @veily/llm-guard
 ```
 
-**Note:** The core URL is already configured in the SDK. You only need to provide your API key.
+**Requirements:**
+- Node.js >= 16.0.0
+- A Veily API key
+
+**Note:** The SDK is pre-configured with the production core URL. Just provide your API key and start protecting PII.
 
 ## Example 1: One-Liner with wrap()
 

@@ -1,7 +1,7 @@
 {
   "name": "@veily/llm-guard",
   "version": "0.1.3",
-  "description": "Anonymize/restore for LLM prompts via HTTP/2 to the Veily services. Does not call the LLM.",
+  "description": "TypeScript SDK to anonymize PII in LLM prompts. Zero dependencies, HTTPS keep-alive, works with OpenAI/Anthropic/etc.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,7 +25,11 @@
     "pii",
     "anonymize",
     "anonymization",
-    "http2"
+    "openai",
+    "anthropic",
+    "data-protection",
+    "gdpr",
+    "typescript"
   ],
   "author": "Veily",
   "license": "MIT",
@@ -51,6 +55,6 @@
     "url": "git+https://github.com/Veily-AI/llm-guard"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=16.0.0"
   }
 }

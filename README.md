@@ -27,13 +27,14 @@ await wrap("Email: juan@company.com", (safe) => openai.create({ content: safe })
 
 ## ✨ Features
 
-- 🚀 **HTTP/2 with keep-alive** - Ultra-low latency (~30ms)
+- 🚀 **HTTPS with keep-alive** - Persistent connections for low latency
 - 🔒 **Zero-trust PII protection** - LLMs never see real data
 - 📦 **Simple one-liner API** - Just wrap your LLM call
 - ⚡ **TypeScript-first** - Complete type definitions
 - 🎯 **Zero runtime dependencies** - Pure Node.js
 - 📊 **Usage metrics** - Track anonymization and billing
 - ⏱️ **TTL support** - Control mapping storage (1h-24h)
+- ☁️ **Cloud-ready** - Compatible with AWS, GCP, Azure
 
 ---
 
@@ -45,7 +46,7 @@ npm install @veily/llm-guard
 
 **Requirements:**
 
-- Node.js >= 18.0.0
+- Node.js >= 16.0.0
 - A Veily API key (contact Veily to obtain one)
 
 ---

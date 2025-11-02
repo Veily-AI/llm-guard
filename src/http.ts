@@ -1,13 +1,14 @@
 /**
- * HTTP/2 transport with keep-alive for low latency
+ * HTTP/1.1 transport with keep-alive for persistent connections
  *
  * Features:
  * - Persistent connection (reuse by origin)
  * - Configurable timeout
  * - Connection pool to avoid repeated handshakes
+ * - Compatible with AWS App Runner and most cloud providers
  */
 
-import http2 from "http2";
+import https from "https";
 import { URL } from "url";
 import { GuardConfig } from "./types.js";
 
@@ -28,11 +29,11 @@ export interface Transport {
 }
 
 /**
- * HTTP/2 client with keep-alive
+ * HTTPS client with keep-alive (HTTP/1.1)
  */
-export class H2Transport implements Transport {
-  private client: http2.ClientHttp2Session;
-  private basePath: string;
+export class HttpsTransport implements Transport {
+  private agent: https.Agent;
+  private baseURL: URL;
   private headers: Record<string, string>;
   private timeoutMs: number;
 
@@ -41,33 +42,24 @@ export class H2Transport implements Transport {
       throw new Error("baseURL is required");
     }
 
-    const u = new URL(cfg.baseURL);
-
-    // Connect with HTTP/2 (keep-alive by default)
-    this.client = http2.connect(u.origin, {
-      maxOutstandingPings: 1,
-      // Keep connection open
-      settings: {
-        enableConnectProtocol: true,
-      },
-    });
-
-    this.basePath = u.pathname.replace(/\/$/, "");
+    this.baseURL = new URL(cfg.baseURL);
     this.timeoutMs = cfg.timeoutMs ?? 2000;
+
+    // Create agent with keep-alive for connection reuse
+    this.agent = new https.Agent({
+      keepAlive: true,
+      keepAliveMsecs: 1000,
+      maxSockets: 50,
+      maxFreeSockets: 10,
+      timeout: this.timeoutMs,
+    });
 
     // Base headers
     this.headers = {
-      "content-type": "application/json",
+      "Content-Type": "application/json",
       ...(cfg.apiKey ? { "x-api-key": cfg.apiKey } : {}),
       ...(cfg.headers ?? {}),
     };
-
-    // Session error handling
-    this.client.on("error", (err) => {
-      // Prevent unhandled errors from closing the process
-      // eslint-disable-next-line no-console
-      console.error("HTTP/2 session error:", err);
-    });
   }
 
   /**
@@ -75,79 +67,59 @@ export class H2Transport implements Transport {
    */
   getJSON<T = unknown>({ path }: GetOptions): Promise<T> {
     return new Promise((resolve, reject) => {
-      // Verify session is active
-      if (this.client.closed || this.client.destroyed) {
-        reject(new Error("HTTP/2 session is closed"));
-        return;
-      }
+      const url = new URL(path, this.baseURL);
 
-      const req = this.client.request({
-        ":method": "GET",
-        ":path": this.basePath + path,
-        ...this.headers,
-      });
+      const options: https.RequestOptions = {
+        method: "GET",
+        agent: this.agent,
+        headers: this.headers,
+        timeout: this.timeoutMs,
+      };
 
-      const chunks: Buffer[] = [];
-      let statusCode = 0;
+      const req = https.request(url, options, (res) => {
+        const chunks: Buffer[] = [];
 
-      // Timeout
-      const timer = setTimeout(() => {
-        try {
-          req.close();
-        } catch {
-          // Ignore errors when closing
-        }
-        reject(new Error("HTTP/2 request timeout"));
-      }, this.timeoutMs);
+        res.on("data", (chunk) => {
+          chunks.push(chunk as Buffer);
+        });
 
-      req.on("response", (headers) => {
-        statusCode = Number(headers[":status"] || 0);
-      });
+        res.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf8");
+          const statusCode = res.statusCode || 0;
 
-      req.on("data", (chunk) => {
-        chunks.push(chunk as Buffer);
-      });
-
-      req.on("end", () => {
-        clearTimeout(timer);
-        const buf = Buffer.concat(chunks).toString("utf8");
-
-        // If HTTP error, reject with context
-        if (statusCode >= 400) {
-          let errorMsg = `HTTP ${statusCode}`;
-          try {
-            const errBody = JSON.parse(buf);
-            errorMsg = errBody.message || errBody.error || errorMsg;
-          } catch {
-            // If not JSON, use plain text
-            errorMsg = buf || errorMsg;
+          // Handle errors
+          if (statusCode >= 400) {
+            let errorMsg = `HTTP ${statusCode}`;
+            try {
+              const errBody = JSON.parse(body);
+              errorMsg = errBody.message || errBody.error || errorMsg;
+            } catch {
+              errorMsg = body || errorMsg;
+            }
+            reject(new Error(`HTTP error ${statusCode}: ${errorMsg}`));
+            return;
           }
-          reject(new Error(`HTTP error ${statusCode}: ${errorMsg}`));
-          return;
-        }
 
-        // Successful parse
-        try {
-          resolve(JSON.parse(buf) as T);
-        } catch {
-          // If not valid JSON, return as string
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          resolve(buf as any);
-        }
+          // Parse success response
+          try {
+            resolve(JSON.parse(body) as T);
+          } catch {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            resolve(body as any);
+          }
+        });
       });
 
       req.on("error", (err) => {
-        clearTimeout(timer);
         reject(err);
       });
 
-      // End without body for GET
-      try {
-        req.end();
-      } catch (err) {
-        clearTimeout(timer);
-        reject(err);
-      }
+      req.on("timeout", () => {
+        req.destroy();
+        reject(new Error("HTTP request timeout"));
+      });
+
+      req.end();
     });
   }
 
@@ -156,112 +128,90 @@ export class H2Transport implements Transport {
    */
   postJSON<T = unknown>({ path, body }: PostOptions): Promise<T> {
     return new Promise((resolve, reject) => {
-      // Verify that the session is active
-      if (this.client.closed || this.client.destroyed) {
-        reject(new Error("HTTP/2 session is closed"));
-        return;
-      }
+      const url = new URL(path, this.baseURL);
+      const bodyStr = JSON.stringify(body ?? {});
 
-      const req = this.client.request({
-        ":method": "POST",
-        ":path": this.basePath + path,
-        ...this.headers,
-      });
+      const options: https.RequestOptions = {
+        method: "POST",
+        agent: this.agent,
+        headers: {
+          ...this.headers,
+          "Content-Length": Buffer.byteLength(bodyStr),
+        },
+        timeout: this.timeoutMs,
+      };
 
-      const chunks: Buffer[] = [];
-      let statusCode = 0;
+      const req = https.request(url, options, (res) => {
+        const chunks: Buffer[] = [];
 
-      // Timeout
-      const timer = setTimeout(() => {
-        try {
-          req.close();
-        } catch {
-          // Ignore errors when closing
-        }
-        reject(new Error("HTTP/2 request timeout"));
-      }, this.timeoutMs);
+        res.on("data", (chunk) => {
+          chunks.push(chunk as Buffer);
+        });
 
-      req.on("response", (headers) => {
-        statusCode = Number(headers[":status"] || 0);
-        // Continue reading body even on errors to provide context
-      });
+        res.on("end", () => {
+          const responseBody = Buffer.concat(chunks).toString("utf8");
+          const statusCode = res.statusCode || 0;
 
-      req.on("data", (chunk) => {
-        chunks.push(chunk as Buffer);
-      });
-
-      req.on("end", () => {
-        clearTimeout(timer);
-        const buf = Buffer.concat(chunks).toString("utf8");
-
-        // If HTTP error, reject with context
-        if (statusCode >= 400) {
-          let errorMsg = `HTTP ${statusCode}`;
-          try {
-            const errBody = JSON.parse(buf);
-            errorMsg = errBody.message || errBody.error || errorMsg;
-          } catch {
-            // If not JSON, use plain text
-            errorMsg = buf || errorMsg;
+          // Handle errors
+          if (statusCode >= 400) {
+            let errorMsg = `HTTP ${statusCode}`;
+            try {
+              const errBody = JSON.parse(responseBody);
+              errorMsg = errBody.message || errBody.error || errorMsg;
+            } catch {
+              errorMsg = responseBody || errorMsg;
+            }
+            reject(new Error(`HTTP error ${statusCode}: ${errorMsg}`));
+            return;
           }
-          reject(new Error(`HTTP error ${statusCode}: ${errorMsg}`));
-          return;
-        }
 
-        // Successful parse
-        try {
-          resolve(JSON.parse(buf) as T);
-        } catch {
-          // If not valid JSON, return as string
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          resolve(buf as any);
-        }
+          // Parse success response
+          try {
+            resolve(JSON.parse(responseBody) as T);
+          } catch {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            resolve(responseBody as any);
+          }
+        });
       });
 
       req.on("error", (err) => {
-        clearTimeout(timer);
         reject(err);
       });
 
-      // Send body
-      try {
-        req.end(JSON.stringify(body ?? {}));
-      } catch (err) {
-        clearTimeout(timer);
-        reject(err);
-      }
+      req.on("timeout", () => {
+        req.destroy();
+        reject(new Error("HTTP request timeout"));
+      });
+
+      req.write(bodyStr);
+      req.end();
     });
   }
 
   /**
-   * Closes the HTTP/2 connection
+   * Closes the HTTPS agent and destroys pooled connections
    */
   close() {
-    try {
-      if (!this.client.closed && !this.client.destroyed) {
-        this.client.close();
-      }
-    } catch {
-      // Ignore errors when closing
-    }
+    this.agent.destroy();
   }
 }
 
 /**
  * Transport pool by origin to reuse connections
- * This significantly reduces latency by avoiding repeated handshakes
+ * This reduces latency by avoiding repeated TLS handshakes
  */
-const transportPool = new Map<string, H2Transport>();
+const transportPool = new Map<string, HttpsTransport>();
 
 /**
  * Gets a transport from the pool or creates a new one
  */
-export function getTransport(cfg: GuardConfig & { baseURL: string }): H2Transport {
+export function getTransport(cfg: GuardConfig & { baseURL: string }): HttpsTransport {
   const key = new URL(cfg.baseURL).origin;
   let transport = transportPool.get(key);
 
   if (!transport) {
-    transport = new H2Transport(cfg);
+    transport = new HttpsTransport(cfg);
     transportPool.set(key, transport);
   }
 
