@@ -1,7 +1,7 @@
 {
   "name": "@veily/llm-guard",
-  "version": "0.1.1",
-  "description": "Anonymize/restore for LLM prompts via HTTP/2 to the core. Does not call the LLM.",
+  "version": "0.1.2",
+  "description": "Anonymize/restore for LLM prompts via HTTP/2 to the Veily services. Does not call the LLM.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
