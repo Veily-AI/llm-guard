@@ -58,7 +58,7 @@ export class H2Transport implements Transport {
     // Base headers
     this.headers = {
       "content-type": "application/json",
-      ...(cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {}),
+      ...(cfg.apiKey ? { "x-api-key": cfg.apiKey } : {}),
       ...(cfg.headers ?? {}),
     };
 
