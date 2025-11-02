@@ -335,19 +335,6 @@ try {
 
 ---
 
-## 🚀 Performance
-
-The SDK uses HTTP/2 with connection pooling:
-
-| Request Type        | Latency                      |
-| ------------------- | ---------------------------- |
-| First request       | ~100ms (includes handshake)  |
-| Subsequent requests | ~30-50ms (reuses connection) |
-
-**Result:** 3-5x faster than creating new connections each time.
-
----
-
 ## 📊 Monitoring Statistics
 
 Track what PII is being detected:
