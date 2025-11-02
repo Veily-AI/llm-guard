@@ -9,6 +9,7 @@ npm install @veily/llm-guard
 ```
 
 **Requirements:**
+
 - Node.js >= 16.0.0
 - A Veily API key
 

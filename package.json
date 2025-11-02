@@ -1,6 +1,6 @@
 {
   "name": "@veily/llm-guard",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "TypeScript SDK to anonymize PII in LLM prompts. Zero dependencies, HTTPS keep-alive, works with OpenAI/Anthropic/etc.",
   "type": "module",
   "main": "dist/index.js",

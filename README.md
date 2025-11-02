@@ -34,7 +34,6 @@ await wrap("Email: juan@company.com", (safe) => openai.create({ content: safe })
 - 🎯 **Zero runtime dependencies** - Pure Node.js
 - 📊 **Usage metrics** - Track anonymization and billing
 - ⏱️ **TTL support** - Control mapping storage (1h-24h)
-- ☁️ **Cloud-ready** - Compatible with AWS, GCP, Azure
 
 ---
 
