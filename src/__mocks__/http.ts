@@ -10,9 +10,17 @@ export class FakeTransport {
   postJSON<T>({ path, body }: { path: string; body: any }): Promise<T> {
     if (path.endsWith("/v1/anonymize") || path.endsWith("/custom/anonymize")) {
       const prompt: string = body.prompt as string;
+      const ttl: number | undefined = body.ttl;
       let safe = prompt;
       let replaced = 0;
       const types: string[] = [];
+
+      // Validate TTL if provided
+      if (ttl !== undefined && (ttl <= 0 || ttl > 86400)) {
+        return Promise.reject(
+          new Error("HTTP error 400: Invalid request: ttl must be between 1 and 86400 seconds")
+        );
+      }
 
       // Simulate PII detection and anonymization
       if (safe.includes("juan.perez@example.com")) {
@@ -53,6 +61,20 @@ export class FakeTransport {
       restored = restored.replace(/\+XX X XXXX XXXX/g, "+56 9 9876 5432");
 
       return Promise.resolve({ output: restored } as T);
+    }
+
+    throw new Error(`Path not supported in FakeTransport: ${path}`);
+  }
+
+  getJSON<T>({ path }: { path: string }): Promise<T> {
+    if (path.endsWith("/v1/metrics")) {
+      return Promise.resolve({
+        totalCycles: 42,
+        successfulDeliveries: 40,
+        completedCycles: 38,
+        totalPiiReplaced: 156,
+        piiTypes: ["email", "name", "phone"],
+      } as T);
     }
 
     throw new Error(`Path not supported in FakeTransport: ${path}`);

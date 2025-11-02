@@ -17,8 +17,13 @@ type PostOptions = {
   body: any;
 };
 
+type GetOptions = {
+  path: string;
+};
+
 export interface Transport {
   postJSON<T = unknown>(opts: PostOptions): Promise<T>;
+  getJSON<T = unknown>(opts: GetOptions): Promise<T>;
   close(): void;
 }
 
@@ -31,9 +36,9 @@ export class H2Transport implements Transport {
   private headers: Record<string, string>;
   private timeoutMs: number;
 
-  constructor(cfg: GuardConfig) {
+  constructor(cfg: GuardConfig & { baseURL: string }) {
     if (!cfg?.baseURL) {
-      throw new Error("cfg.baseURL is required");
+      throw new Error("baseURL is required");
     }
 
     const u = new URL(cfg.baseURL);
@@ -66,11 +71,92 @@ export class H2Transport implements Transport {
   }
 
   /**
+   * Performs GET JSON and returns parsed response
+   */
+  getJSON<T = unknown>({ path }: GetOptions): Promise<T> {
+    return new Promise((resolve, reject) => {
+      // Verify session is active
+      if (this.client.closed || this.client.destroyed) {
+        reject(new Error("HTTP/2 session is closed"));
+        return;
+      }
+
+      const req = this.client.request({
+        ":method": "GET",
+        ":path": this.basePath + path,
+        ...this.headers,
+      });
+
+      const chunks: Buffer[] = [];
+      let statusCode = 0;
+
+      // Timeout
+      const timer = setTimeout(() => {
+        try {
+          req.close();
+        } catch {
+          // Ignore errors when closing
+        }
+        reject(new Error("HTTP/2 request timeout"));
+      }, this.timeoutMs);
+
+      req.on("response", (headers) => {
+        statusCode = Number(headers[":status"] || 0);
+      });
+
+      req.on("data", (chunk) => {
+        chunks.push(chunk as Buffer);
+      });
+
+      req.on("end", () => {
+        clearTimeout(timer);
+        const buf = Buffer.concat(chunks).toString("utf8");
+
+        // If HTTP error, reject with context
+        if (statusCode >= 400) {
+          let errorMsg = `HTTP ${statusCode}`;
+          try {
+            const errBody = JSON.parse(buf);
+            errorMsg = errBody.message || errBody.error || errorMsg;
+          } catch {
+            // If not JSON, use plain text
+            errorMsg = buf || errorMsg;
+          }
+          reject(new Error(`HTTP error ${statusCode}: ${errorMsg}`));
+          return;
+        }
+
+        // Successful parse
+        try {
+          resolve(JSON.parse(buf) as T);
+        } catch {
+          // If not valid JSON, return as string
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          resolve(buf as any);
+        }
+      });
+
+      req.on("error", (err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+
+      // End without body for GET
+      try {
+        req.end();
+      } catch (err) {
+        clearTimeout(timer);
+        reject(err);
+      }
+    });
+  }
+
+  /**
    * Performs POST JSON and returns parsed response
    */
   postJSON<T = unknown>({ path, body }: PostOptions): Promise<T> {
     return new Promise((resolve, reject) => {
-      // Verificar que la sesión esté activa
+      // Verify that the session is active
       if (this.client.closed || this.client.destroyed) {
         reject(new Error("HTTP/2 session is closed"));
         return;
@@ -90,7 +176,7 @@ export class H2Transport implements Transport {
         try {
           req.close();
         } catch {
-          // Ignorar errores al cerrar
+          // Ignore errors when closing
         }
         reject(new Error("HTTP/2 request timeout"));
       }, this.timeoutMs);
@@ -170,7 +256,7 @@ const transportPool = new Map<string, H2Transport>();
 /**
  * Gets a transport from the pool or creates a new one
  */
-export function getTransport(cfg: GuardConfig): H2Transport {
+export function getTransport(cfg: GuardConfig & { baseURL: string }): H2Transport {
   const key = new URL(cfg.baseURL).origin;
   let transport = transportPool.get(key);
 

@@ -4,13 +4,14 @@
  * This example shows how to protect prompts with PII using the one-liner wrap()
  */
 
-import { wrap, createSession, anonymize } from "@veily/llm-guard";
-import type { GuardConfig } from "@veily/llm-guard";
+import { wrap, createSession, anonymize, getMetrics } from "@veily/llm-guard";
+import type { GuardConfig, AnonymizeOptions } from "@veily/llm-guard";
 
-// Configuration (normally from environment variables)
+// Configuration
+// IMPORTANT: Set VEILY_CORE_URL environment variable before running
+// export VEILY_CORE_URL="https://u3wmtdzmxm.us-east-1.awsapprunner.com"
 const config: GuardConfig = {
-  baseURL: "https://core.veily.internal",
-  apiKey: process.env.VEILY_API_KEY || "your-api-key-here",
+  apiKey: "your-api-key-here", // Replace with your actual API key
   timeoutMs: 2000,
 };
 
@@ -119,11 +120,85 @@ async function example4_errorHandling() {
 }
 
 // ============================================================================
-// Example 5: With real OpenAI (requires OPENAI_API_KEY)
+// Example 5: TTL (Time-To-Live) support
 // ============================================================================
 
-async function example5_realOpenAI() {
-  console.log("\n=== Example 5: Real OpenAI ===\n");
+async function example5_ttl() {
+  console.log("\n=== Example 5: TTL Support ===\n");
+
+  const prompt = "My email is maria@company.com";
+
+  // Default TTL: 3600 seconds (1 hour)
+  const result1 = await wrap(prompt, myLLM, config);
+  console.log("Result with default TTL:", result1);
+
+  // Custom TTL: 7200 seconds (2 hours)
+  const options: AnonymizeOptions = { ttl: 7200 };
+  const result2 = await wrap(prompt, myLLM, config, options);
+  console.log("Result with 2h TTL:", result2);
+
+  // Manual control with TTL
+  const { safePrompt, restore } = await anonymize(prompt, config, { ttl: 3600 });
+  const llmOutput = await myLLM(safePrompt);
+  const final = await restore(llmOutput);
+  console.log("Manual with TTL:", final);
+
+  console.log("\n✅ TTL configured successfully");
+}
+
+// ============================================================================
+// Example 6: Metrics tracking
+// ============================================================================
+
+async function example6_metrics() {
+  console.log("\n=== Example 6: Metrics API ===\n");
+
+  try {
+    const metrics = await getMetrics(config);
+
+    console.log("Usage Metrics:");
+    console.log("  Total cycles:", metrics.totalCycles);
+    console.log("  Successful deliveries:", metrics.successfulDeliveries);
+    console.log("  Completed cycles:", metrics.completedCycles);
+    console.log("  Total PII replaced:", metrics.totalPiiReplaced);
+    console.log("  PII types detected:", metrics.piiTypes?.join(", "));
+
+    console.log("\n✅ Metrics fetched successfully");
+  } catch (error) {
+    console.log("⚠️  Metrics require valid API key and connection to core");
+  }
+}
+
+// ============================================================================
+// Example 7: Environment variable configuration
+// ============================================================================
+
+async function example7_envVars() {
+  console.log("\n=== Example 7: Environment Variables ===\n");
+
+  // The core URL comes from VEILY_CORE_URL environment variable
+  // This is transparent to end users - they never see the infrastructure
+  const minimalConfig: GuardConfig = {
+    apiKey: "your-api-key-here",
+  };
+
+  try {
+    const result = await wrap("Test prompt with email@test.com", myLLM, minimalConfig);
+    console.log("Result:", result);
+    console.log("✅ Core URL loaded from VEILY_CORE_URL environment variable");
+  } catch (error) {
+    if (error instanceof Error) {
+      console.log("⚠️  Make sure VEILY_CORE_URL is set:", error.message);
+    }
+  }
+}
+
+// ============================================================================
+// Example 8: With real OpenAI (requires OPENAI_API_KEY)
+// ============================================================================
+
+async function example8_realOpenAI() {
+  console.log("\n=== Example 8: Real OpenAI ===\n");
 
   if (!process.env.OPENAI_API_KEY) {
     console.log("⚠️  Skipped: Set OPENAI_API_KEY to run this example");
@@ -168,7 +243,10 @@ async function main() {
     await example2_manual();
     await example3_session();
     await example4_errorHandling();
-    await example5_realOpenAI();
+    await example5_ttl();
+    await example6_metrics();
+    await example7_envVars();
+    await example8_realOpenAI();
 
     console.log("\n======================================");
     console.log("✅ All examples completed");

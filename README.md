@@ -30,6 +30,16 @@ npm install @veily/llm-guard
 
 ## 🚀 Usage
 
+### Quick Setup
+
+**Set the core URL** as an environment variable (required):
+
+```bash
+export VEILY_CORE_URL="https://u3wmtdzmxm.us-east-1.awsapprunner.com"
+```
+
+**Note:** The API key is provided in your code, not as an environment variable.
+
 ### One-Liner (Recommended)
 
 The simplest way to protect your prompts:
@@ -50,12 +60,22 @@ const final = await wrap(
     return completion.choices[0].message.content || "";
   },
   {
-    baseURL: "https://core.veily.internal",
-    apiKey: process.env.VEILY_API_KEY,
+    apiKey: "your-api-key-here", // Required: Your Veily API key
   }
 );
 
 console.log(final); // Contains original data restored
+```
+
+**With custom TTL (time-to-live for mappings):**
+
+```typescript
+const final = await wrap(
+  "My email is juan.perez@example.com",
+  async (safe) => callMyLLM(safe),
+  { apiKey: "your-api-key-here" },
+  { ttl: 7200 } // 2 hours (default: 3600 = 1 hour, max: 86400 = 24 hours)
+);
 ```
 
 ### Two-Step API
@@ -66,9 +86,13 @@ For more control over the process:
 import { anonymize } from "@veily/llm-guard";
 
 // 1. Anonymize - anonymize the prompt
-const { safePrompt, restore, stats } = await anonymize("My email is juan.perez@example.com", {
-  baseURL: "https://core.veily.internal",
-});
+const { safePrompt, restore, stats } = await anonymize(
+  "My email is juan.perez@example.com",
+  {
+    apiKey: "your-api-key-here", // Required: Your Veily API key
+  },
+  { ttl: 7200 } // Optional: custom TTL in seconds
+);
 
 console.log(safePrompt); // Anonymized email
 console.log(stats); // { replaced: 1, types: ['email'] }
@@ -89,18 +113,45 @@ For multiple calls with the same configuration:
 import { createSession } from "@veily/llm-guard";
 
 const session = createSession({
-  baseURL: "https://core.veily.internal",
-  apiKey: process.env.VEILY_API_KEY,
+  apiKey: "your-api-key-here", // Required: Your Veily API key
   timeoutMs: 2500,
 });
 
 // Option 1: protect (one-liner)
 const result1 = await session.protect(prompt1, caller);
 
-// Option 2: manual anonymize
-const { safePrompt, restore } = await session.anonymize(prompt2);
+// Option 2: protect with TTL
+const result2 = await session.protect(prompt2, caller, { ttl: 7200 });
+
+// Option 3: manual anonymize
+const { safePrompt, restore } = await session.anonymize(prompt3, { ttl: 3600 });
 const llmOutput = await myLLM(safePrompt);
-const result2 = await restore(llmOutput);
+const result3 = await restore(llmOutput);
+
+// Option 4: get metrics
+const metrics = await session.getMetrics();
+console.log(metrics.totalCycles, metrics.successfulDeliveries);
+```
+
+### Metrics API
+
+Track usage and billing information:
+
+```typescript
+import { getMetrics } from "@veily/llm-guard";
+
+const metrics = await getMetrics({
+  apiKey: "your-api-key-here", // Required: Your Veily API key
+});
+
+console.log(metrics);
+// {
+//   totalCycles: 1523,
+//   successfulDeliveries: 1498,
+//   completedCycles: 1487,
+//   totalPiiReplaced: 4521,
+//   piiTypes: ['email', 'name', 'phone', 'address']
+// }
 ```
 
 ---
@@ -109,11 +160,8 @@ const result2 = await restore(llmOutput);
 
 ```typescript
 type GuardConfig = {
-  /** Base URL of the core service (required) */
-  baseURL: string;
-
-  /** API key for Bearer authentication (optional) */
-  apiKey?: string;
+  /** API key for Bearer authentication (required) */
+  apiKey: string;
 
   /** Timeout in milliseconds (default: 2000ms) */
   timeoutMs?: number;
@@ -126,21 +174,58 @@ type GuardConfig = {
 
   /** Custom path for restore (default: /v1/restore) */
   restorePath?: string;
+
+  /** Custom path for metrics (default: /v1/metrics) */
+  metricsPath?: string;
+};
+
+type AnonymizeOptions = {
+  /**
+   * Optional custom TTL in seconds
+   * Default: 3600 (1 hour)
+   * Max: 86400 (24 hours)
+   */
+  ttl?: number;
 };
 ```
+
+### Environment Variables
+
+**Required:** Set the core URL via environment variable:
+
+```bash
+# Production (default)
+export VEILY_CORE_URL="https://u3wmtdzmxm.us-east-1.awsapprunner.com"
+
+# Or for development/staging
+export VEILY_CORE_URL="https://your-dev-instance.internal"
+```
+
+**Important:**
+
+- The core URL is **never exposed to users** of your application
+- The API key is **provided in your code**, not as an environment variable
+- This design ensures users don't need to know about the core infrastructure
 
 ### Example with all options:
 
 ```typescript
+// Make sure VEILY_CORE_URL is set in your environment
 const config: GuardConfig = {
-  baseURL: "https://core.veily.internal",
-  apiKey: "your-api-key",
-  timeoutMs: 3000,
+  apiKey: "your-api-key-here", // Required
+  timeoutMs: 3000, // Optional
   headers: {
+    // Optional
     "X-Custom-Header": "value",
   },
-  anonymizePath: "/api/v2/anonymize",
-  restorePath: "/api/v2/deanonymize",
+  anonymizePath: "/v1/anonymize", // Optional (default shown)
+  restorePath: "/v1/restore", // Optional (default shown)
+  metricsPath: "/v1/metrics", // Optional (default shown)
+};
+
+// With TTL options
+const options: AnonymizeOptions = {
+  ttl: 7200, // 2 hours
 };
 ```
 

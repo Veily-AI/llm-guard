@@ -7,29 +7,64 @@
  * 3. createSession() - Stateful API for multiple calls
  */
 
-import { GuardConfig, AnonymizeResult, AnonymizeWire, RestoreWire } from "./types.js";
+import {
+  GuardConfig,
+  AnonymizeResult,
+  AnonymizeWire,
+  RestoreWire,
+  AnonymizeOptions,
+  MetricsResponse,
+} from "./types.js";
 import { getTransport } from "./http.js";
 
 /**
- * Gets the anonymize/restore paths with defaults
+ * Gets the anonymize/restore/metrics paths with defaults
  */
 function getPaths(cfg: GuardConfig) {
   return {
     anonymize: cfg.anonymizePath ?? "/v1/anonymize",
     restore: cfg.restorePath ?? "/v1/restore",
+    metrics: cfg.metricsPath ?? "/v1/metrics",
   };
 }
 
 /**
- * Validates basic configuration
+ * Gets the baseURL from environment variable
  */
-function validateConfig(cfg: GuardConfig): void {
-  if (!cfg?.baseURL) {
-    throw new Error("cfg.baseURL is required");
+function getBaseURL(): string {
+  const baseURL = process.env.VEILY_CORE_URL;
+
+  if (!baseURL) {
+    throw new Error("VEILY_CORE_URL environment variable is required");
   }
-  if (typeof cfg.baseURL !== "string" || cfg.baseURL.trim() === "") {
-    throw new Error("cfg.baseURL is required");
+
+  if (typeof baseURL !== "string" || baseURL.trim() === "") {
+    throw new Error("VEILY_CORE_URL environment variable is required");
   }
+
+  return baseURL;
+}
+
+/**
+ * Validates basic configuration and adds internal baseURL
+ */
+function validateConfig(cfg: GuardConfig): GuardConfig & { baseURL: string } {
+  // Validate required apiKey
+  if (!cfg?.apiKey) {
+    throw new Error("cfg.apiKey is required");
+  }
+
+  if (typeof cfg.apiKey !== "string" || cfg.apiKey.trim() === "") {
+    throw new Error("cfg.apiKey is required");
+  }
+
+  const baseURL = getBaseURL();
+
+  // Return config with internal baseURL from env var
+  return {
+    ...cfg,
+    baseURL,
+  };
 }
 
 /**
@@ -37,32 +72,44 @@ function validateConfig(cfg: GuardConfig): void {
  *
  * @param prompt - The original prompt with potential PII
  * @param cfg - Core service configuration
+ * @param options - Optional anonymize options (e.g., TTL)
  * @returns Object with safePrompt and async restore function
  *
  * @example
  * ```ts
  * const { safePrompt, restore } = await anonymize(
  *   "My email is juan@example.com",
- *   { baseURL: "https://core.veily.internal" }
+ *   { baseURL: "https://core.veily.internal" },
+ *   { ttl: 7200 }
  * );
  * const llmOutput = await openai(safePrompt);
  * const final = await restore(llmOutput);
  * ```
  */
-export async function anonymize(prompt: string, cfg: GuardConfig): Promise<AnonymizeResult> {
+export async function anonymize(
+  prompt: string,
+  cfg: GuardConfig,
+  options?: AnonymizeOptions
+): Promise<AnonymizeResult> {
   // Validations
   if (typeof prompt !== "string") {
     throw new Error("prompt must be a string");
   }
-  validateConfig(cfg);
+  const validatedCfg = validateConfig(cfg);
 
-  const transport = getTransport(cfg);
-  const paths = getPaths(cfg);
+  const transport = getTransport(validatedCfg);
+  const paths = getPaths(validatedCfg);
+
+  // Build request body with optional TTL
+  const requestBody: { prompt: string; ttl?: number } = { prompt };
+  if (options?.ttl !== undefined) {
+    requestBody.ttl = options.ttl;
+  }
 
   // Call to /v1/anonymize
   const response = await transport.postJSON<AnonymizeWire>({
     path: paths.anonymize,
-    body: { prompt },
+    body: requestBody,
   });
 
   // Validate response
@@ -99,6 +146,34 @@ export async function anonymize(prompt: string, cfg: GuardConfig): Promise<Anony
 }
 
 /**
+ * GetMetrics: fetches usage metrics from the core service
+ *
+ * @param cfg - Core service configuration
+ * @returns Metrics data from the tenant
+ *
+ * @example
+ * ```ts
+ * const metrics = await getMetrics({
+ *   baseURL: "https://core.veily.internal",
+ *   apiKey: process.env.VEILY_API_KEY
+ * });
+ * console.log(metrics.totalCycles);
+ * ```
+ */
+export async function getMetrics(cfg: GuardConfig): Promise<MetricsResponse> {
+  const validatedCfg = validateConfig(cfg);
+  const transport = getTransport(validatedCfg);
+  const paths = getPaths(validatedCfg);
+
+  // Call to /v1/metrics
+  const response = await transport.getJSON<MetricsResponse>({
+    path: paths.metrics,
+  });
+
+  return response;
+}
+
+/**
  * Wrap: one-liner that encapsulates anonymize -> caller -> restore
  *
  * @param prompt - The original prompt with potential PII
@@ -120,7 +195,8 @@ export async function anonymize(prompt: string, cfg: GuardConfig): Promise<Anony
 export async function wrap(
   prompt: string,
   caller: (safePrompt: string) => Promise<string>,
-  cfg: GuardConfig
+  cfg: GuardConfig,
+  options?: AnonymizeOptions
 ): Promise<string> {
   // Validations
   if (typeof prompt !== "string") {
@@ -129,10 +205,11 @@ export async function wrap(
   if (typeof caller !== "function") {
     throw new Error("caller must be a function");
   }
-  validateConfig(cfg);
+
+  const validatedCfg = validateConfig(cfg);
 
   // 1. Anonymize
-  const { safePrompt, restore } = await anonymize(prompt, cfg);
+  const { safePrompt, restore } = await anonymize(prompt, validatedCfg, options);
 
   // 2. Call user's LLM
   const llmOutput = await caller(safePrompt);
@@ -158,21 +235,32 @@ export async function wrap(
  * ```
  */
 export function createSession(cfg: GuardConfig) {
-  validateConfig(cfg);
+  const validatedCfg = validateConfig(cfg);
 
   return {
     /**
      * Equivalent to wrap() but with config already set
      */
-    protect(prompt: string, caller: (safePrompt: string) => Promise<string>): Promise<string> {
-      return wrap(prompt, caller, cfg);
+    protect(
+      prompt: string,
+      caller: (safePrompt: string) => Promise<string>,
+      options?: AnonymizeOptions
+    ): Promise<string> {
+      return wrap(prompt, caller, validatedCfg, options);
     },
 
     /**
      * Equivalent to anonymize() but with config already set
      */
-    anonymize(prompt: string): Promise<AnonymizeResult> {
-      return anonymize(prompt, cfg);
+    anonymize(prompt: string, options?: AnonymizeOptions): Promise<AnonymizeResult> {
+      return anonymize(prompt, validatedCfg, options);
+    },
+
+    /**
+     * Equivalent to getMetrics() but with config already set
+     */
+    getMetrics(): Promise<MetricsResponse> {
+      return getMetrics(validatedCfg);
     },
   };
 }
