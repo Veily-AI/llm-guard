@@ -1,6 +1,6 @@
 {
   "name": "@veily/llm-guard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Anonymize/restore for LLM prompts via HTTP/2 to the core. Does not call the LLM.",
   "type": "module",
   "main": "dist/index.js",
@@ -48,7 +48,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/veily/llm-guard.git"
+    "url": "git+https://github.com/Veily-AI/llm-guard"
   },
   "engines": {
     "node": ">=18.0.0"
