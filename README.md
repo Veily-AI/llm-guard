@@ -32,13 +32,13 @@ npm install @veily/llm-guard
 
 ### Quick Setup
 
-**Set the core URL** as an environment variable (required):
+Just install and use with your API key:
 
 ```bash
-export VEILY_CORE_URL="https://u3wmtdzmxm.us-east-1.awsapprunner.com"
+npm install @veily/llm-guard
 ```
 
-**Note:** The API key is provided in your code, not as an environment variable.
+**Note:** The core URL is already configured. You only need your API key.
 
 ### One-Liner (Recommended)
 
@@ -191,26 +191,17 @@ type AnonymizeOptions = {
 
 ### Environment Variables
 
-**Required:** Set the core URL via environment variable:
+**None required!** The SDK comes pre-configured with the production core URL.
 
-```bash
-# Production (default)
-export VEILY_CORE_URL="https://u3wmtdzmxm.us-east-1.awsapprunner.com"
+**Note:**
 
-# Or for development/staging
-export VEILY_CORE_URL="https://your-dev-instance.internal"
-```
-
-**Important:**
-
-- The core URL is **never exposed to users** of your application
-- The API key is **provided in your code**, not as an environment variable
-- This design ensures users don't need to know about the core infrastructure
+- The core URL is hardcoded in the SDK (no configuration needed)
+- You only provide your API key in the config
+- This design hides internal infrastructure from your users
 
 ### Example with all options:
 
 ```typescript
-// Make sure VEILY_CORE_URL is set in your environment
 const config: GuardConfig = {
   apiKey: "your-api-key-here", // Required
   timeoutMs: 3000, // Optional
@@ -383,6 +374,7 @@ MIT © [Veily](https://veily.com)
 ## 🔗 Links
 
 - [Complete Documentation](./docs/overview.md)
+- [Usage Examples](./docs/EXAMPLES.md)
 - [NPM Package](https://www.npmjs.com/package/@veily/llm-guard)
 - [GitHub](https://github.com/veily/llm-guard)
 - [Issues](https://github.com/veily/llm-guard/issues)
