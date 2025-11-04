@@ -12,8 +12,6 @@ export type GuardConfig = {
   anonymizePath?: string;
   /** Custom path for restore (default: /v1/restore) */
   restorePath?: string;
-  /** Custom path for metrics (default: /v1/metrics) */
-  metricsPath?: string;
 };
 
 /**
@@ -60,22 +58,4 @@ export type AnonymizeResult = {
 export type AnonymizeOptions = {
   /** Optional custom TTL in seconds (default: 3600 = 1 hour, max: 86400 = 24 hours) */
   ttl?: number;
-};
-
-/**
- * Response from the /v1/metrics endpoint
- */
-export type MetricsResponse = {
-  /** Total number of anonymization cycles */
-  totalCycles?: number;
-  /** Number of successful deliveries */
-  successfulDeliveries?: number;
-  /** Number of completed cycles */
-  completedCycles?: number;
-  /** Total PII items replaced */
-  totalPiiReplaced?: number;
-  /** PII types detected */
-  piiTypes?: string[];
-  /** Additional metric fields */
-  [key: string]: unknown;
 };

@@ -13,18 +13,16 @@ import {
   AnonymizeWire,
   RestoreWire,
   AnonymizeOptions,
-  MetricsResponse,
 } from "./types.js";
 import { getTransport } from "./http.js";
 
 /**
- * Gets the anonymize/restore/metrics paths with defaults
+ * Gets the anonymize/restore paths with defaults
  */
 function getPaths(cfg: GuardConfig) {
   return {
     anonymize: cfg.anonymizePath ?? "/v1/anonymize",
     restore: cfg.restorePath ?? "/v1/restore",
-    metrics: cfg.metricsPath ?? "/v1/metrics",
   };
 }
 
@@ -138,33 +136,6 @@ export async function anonymize(
   };
 }
 
-/**
- * GetMetrics: fetches usage metrics from the core service
- *
- * @param cfg - Core service configuration
- * @returns Metrics data from the tenant
- *
- * @example
- * ```ts
- * const metrics = await getMetrics({
- *   baseURL: "https://core.veily.internal",
- *   apiKey: process.env.VEILY_API_KEY
- * });
- * console.log(metrics.totalCycles);
- * ```
- */
-export async function getMetrics(cfg: GuardConfig): Promise<MetricsResponse> {
-  const validatedCfg = validateConfig(cfg);
-  const transport = getTransport(validatedCfg);
-  const paths = getPaths(validatedCfg);
-
-  // Call to /v1/metrics
-  const response = await transport.getJSON<MetricsResponse>({
-    path: paths.metrics,
-  });
-
-  return response;
-}
 
 /**
  * Wrap: one-liner that encapsulates anonymize -> caller -> restore
@@ -247,13 +218,6 @@ export function createSession(cfg: GuardConfig) {
      */
     anonymize(prompt: string, options?: AnonymizeOptions): Promise<AnonymizeResult> {
       return anonymize(prompt, validatedCfg, options);
-    },
-
-    /**
-     * Equivalent to getMetrics() but with config already set
-     */
-    getMetrics(): Promise<MetricsResponse> {
-      return getMetrics(validatedCfg);
     },
   };
 }

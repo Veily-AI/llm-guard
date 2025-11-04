@@ -44,7 +44,6 @@
                                │ HTTPS with keep-alive
                                │ POST /v1/anonymize
                                │ POST /v1/restore
-                               │ GET  /v1/metrics
                                ▼
           ┌────────────────────────────────┐
           │   Veily Core Service           │
@@ -151,37 +150,6 @@
 └─────────────────────────────────────────────────────┘
 ```
 
-### 3. Metrics Flow
-
-```
-┌─────────────────────────────────────────────────────┐
-│ 1. getMetrics() called                              │
-│    { apiKey: "your-key" }                           │
-└──────────────────┬──────────────────────────────────┘
-                   │
-                   │ GET /v1/metrics
-                   │ Headers: { authorization: "Bearer key" }
-                   ▼
-┌─────────────────────────────────────────────────────┐
-│ 2. Core Service                                     │
-│    - Queries tenant usage data                      │
-│    - Aggregates cycle statistics                    │
-└──────────────────┬──────────────────────────────────┘
-                   │
-                   │ 200 OK
-                   │ {
-                   │   totalCycles: 1523,
-                   │   successfulDeliveries: 1498,
-                   │   completedCycles: 1487,
-                   │   totalPiiReplaced: 4521,
-                   │   piiTypes: ["email", "name", "phone"]
-                   │ }
-                   ▼
-┌─────────────────────────────────────────────────────┐
-│ 3. SDK returns MetricsResponse                      │
-└─────────────────────────────────────────────────────┘
-```
-
 ---
 
 ## 🧩 Core Components
@@ -199,7 +167,6 @@ type GuardConfig = {
   headers?: Record; // Optional: Additional HTTP headers
   anonymizePath?: string; // Optional: Custom path (default: /v1/anonymize)
   restorePath?: string; // Optional: Custom path (default: /v1/restore)
-  metricsPath?: string; // Optional: Custom path (default: /v1/metrics)
 };
 ```
 
@@ -224,15 +191,6 @@ type AnonymizeWire = {
 
 type RestoreWire = {
   output: string;
-};
-
-type MetricsResponse = {
-  totalCycles?: number;
-  successfulDeliveries?: number;
-  completedCycles?: number;
-  totalPiiReplaced?: number;
-  piiTypes?: string[];
-  [key: string]: unknown;
 };
 ```
 
@@ -385,34 +343,12 @@ const restore = async (llmOutput: string): Promise<string> => {
 - Impossible to lose mapping reference
 - Type-safe (TypeScript enforces correct usage)
 
-#### Level 3: `getMetrics()` - Usage Tracking
-
-```typescript
-async function getMetrics(cfg: GuardConfig): Promise<MetricsResponse>;
-```
-
-**Use Case**: Track usage for billing, analytics, monitoring
-
-**Flow**:
-
-1. Validates `cfg.apiKey`
-2. GET `/v1/metrics`
-3. Returns aggregated tenant metrics
-
-**Example**:
-
-```typescript
-const metrics = await getMetrics({ apiKey: "key" });
-console.log(metrics.totalCycles); // 1523
-```
-
-#### Level 4: `createSession()` - Stateful API
+#### Level 3: `createSession()` - Stateful API
 
 ```typescript
 function createSession(cfg: GuardConfig): {
   protect(prompt, caller, options?): Promise<string>;
   anonymize(prompt, options?): Promise<AnonymizeResult>;
-  getMetrics(): Promise<MetricsResponse>;
 };
 ```
 
@@ -431,7 +367,6 @@ const session = createSession({ apiKey: "key" });
 
 const r1 = await session.protect(prompt1, caller);
 const r2 = await session.protect(prompt2, caller, { ttl: 7200 });
-const metrics = await session.getMetrics();
 ```
 
 ---
@@ -442,7 +377,7 @@ const metrics = await session.getMetrics();
 
 ```typescript
 // Functions
-export { anonymize, wrap, createSession, getMetrics } from "./guard.js";
+export { anonymize, wrap, createSession } from "./guard.js";
 
 // Types
 export type {
@@ -451,13 +386,12 @@ export type {
   AnonymizeWire,
   RestoreWire,
   AnonymizeOptions,
-  MetricsResponse,
 } from "./types.js";
 ```
 
 **Not Exported** (internal only):
 
-- `H2Transport` class
+- `HttpsTransport` class
 - `getTransport()` function
 - `validateConfig()` function
 - `getBaseURL()` function
@@ -622,11 +556,10 @@ const baseURL = "https://u3wmtdzmxm.us-east-1.awsapprunner.com";
 ### Current Test Coverage
 
 ```
-✅ 21 tests passing
+✅ 19 tests passing
 ✅ 100% of public API covered
 ✅ All error paths tested
 ✅ TTL validation tested
-✅ Metrics endpoint tested
 ```
 
 ### Mock Implementation
@@ -645,14 +578,6 @@ jest.unstable_mockModule("../src/http.js", () => ({
       }
       if (path.endsWith("/v1/restore")) {
         return { output: restoreMock(body.output) };
-      }
-    },
-    getJSON: async ({ path }) => {
-      if (path.endsWith("/v1/metrics")) {
-        return {
-          totalCycles: 42,
-          successfulDeliveries: 40,
-        };
       }
     },
   })),
@@ -716,7 +641,7 @@ const config = { apiKey: process.env.PROD_API_KEY };
 
 ---
 
-## 📊 Monitoring & Metrics
+## 📊 Monitoring
 
 ### Recommended Metrics to Track
 
@@ -745,10 +670,6 @@ try {
     type: error.message.includes("timeout") ? "timeout" : "other",
   });
 }
-
-// 4. Usage Tracking
-const metrics = await getMetrics(config);
-console.log("Billing cycles:", metrics.successfulDeliveries);
 ```
 
 ---

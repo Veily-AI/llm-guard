@@ -144,52 +144,7 @@ const final = await wrap(
 );
 ```
 
-## Example 6: Metrics Tracking
-
-Get usage statistics:
-
-```typescript
-import { getMetrics } from "@veily/llm-guard";
-
-const config = {
-  apiKey: "your-api-key-here",
-};
-
-try {
-  const metrics = await getMetrics(config);
-
-  console.log("Usage Metrics:");
-  console.log("  Total cycles:", metrics.totalCycles);
-  console.log("  Successful deliveries:", metrics.successfulDeliveries);
-  console.log("  Completed cycles:", metrics.completedCycles);
-  console.log("  Total PII replaced:", metrics.totalPiiReplaced);
-  console.log("  PII types detected:", metrics.piiTypes?.join(", "));
-} catch (error) {
-  console.error("Failed to fetch metrics:", error);
-}
-```
-
-## Example 7: Session with Metrics
-
-Combine session API with metrics:
-
-```typescript
-import { createSession } from "@veily/llm-guard";
-
-const session = createSession({
-  apiKey: "your-api-key-here",
-});
-
-// Process prompts
-await session.protect("Email: test@example.com", myLLM);
-await session.protect("Phone: +1234567890", myLLM, { ttl: 7200 });
-
-// Get metrics
-const metrics = await session.getMetrics();
-console.log("Total processed:", metrics.totalCycles);
-```
-
-## Example 8: With OpenAI
+## Example 6: With OpenAI
 
 Real-world example with OpenAI:
 
@@ -219,7 +174,7 @@ console.log("Response:", result);
 // OpenAI never saw the real email address!
 ```
 
-## Example 9: Custom Paths
+## Example 7: Custom Paths
 
 Use custom endpoint paths:
 
@@ -230,13 +185,12 @@ const config = {
   apiKey: "your-api-key-here",
   anonymizePath: "/custom/anonymize",
   restorePath: "/custom/restore",
-  metricsPath: "/custom/metrics",
 };
 
 const result = await wrap("Sensitive data", myLLM, config);
 ```
 
-## Example 10: Custom Timeout
+## Example 8: Custom Timeout
 
 Configure request timeout:
 
@@ -292,4 +246,3 @@ main();
 - **API Key**: Obtained from Veily dashboard
 - **Security**: The core URL is hardcoded in the SDK, never exposed
 - **TTL**: Mappings expire after TTL (default 1 hour, max 24 hours)
-- **Metrics**: Track usage for billing and analytics

@@ -32,7 +32,6 @@ await wrap("Email: juan@company.com", (safe) => openai.create({ content: safe })
 - 📦 **Simple one-liner API** - Just wrap your LLM call
 - ⚡ **TypeScript-first** - Complete type definitions
 - 🎯 **Zero runtime dependencies** - Pure Node.js
-- 📊 **Usage metrics** - Track anonymization and billing
 - ⏱️ **TTL support** - Control mapping storage (1h-24h)
 
 ---
@@ -76,7 +75,6 @@ type GuardConfig = {
   headers?: Record; // Additional HTTP headers
   anonymizePath?: string; // Custom path (default: /v1/anonymize)
   restorePath?: string; // Custom path (default: /v1/restore)
-  metricsPath?: string; // Custom path (default: /v1/metrics)
 };
 ```
 
@@ -208,25 +206,6 @@ const session = createSession({
 // Process multiple prompts
 const r1 = await session.protect(prompt1, yourLLM);
 const r2 = await session.protect(prompt2, yourLLM, { ttl: 7200 });
-
-// Get metrics
-const metrics = await session.getMetrics();
-```
-
-### 4. `getMetrics()` - Usage Tracking
-
-```typescript
-import { getMetrics } from "@veily/llm-guard";
-
-const metrics = await getMetrics({ apiKey: "your-key" });
-
-console.log(metrics);
-// {
-//   totalCycles: 1523,
-//   successfulDeliveries: 1498,
-//   totalPiiReplaced: 4521,
-//   piiTypes: ['email', 'name', 'phone']
-// }
 ```
 
 ---
@@ -354,7 +333,6 @@ console.log(stats);
 
 **Use for:**
 
-- Compliance reporting
 - Quality assurance
 - Anomaly detection
 
@@ -466,10 +444,6 @@ const session = createSession({ apiKey: veilyKey });
 for (const query of userQueries) {
   const response = await session.protect(query, llmCaller);
 }
-
-// Audit log
-const metrics = await session.getMetrics();
-console.log(`Protected ${metrics.totalPiiReplaced} PII items`);
 ```
 
 ---
@@ -531,14 +505,6 @@ Increase timeout:
 }
 ```
 
-### `getMetrics(config)`
-
-**Parameters:**
-
-- `config: GuardConfig` - Configuration with API key
-
-**Returns:** `Promise<MetricsResponse>` - Usage statistics
-
 ### `createSession(config)`
 
 **Parameters:**
@@ -549,7 +515,6 @@ Increase timeout:
 
 - `protect(prompt, caller, options?)` - Same as `wrap()`
 - `anonymize(prompt, options?)` - Same as `anonymize()`
-- `getMetrics()` - Same as `getMetrics()`
 
 ---
 

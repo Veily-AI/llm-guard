@@ -242,25 +242,4 @@ describe("@veily/llm-guard - TDD Suite", () => {
     });
   });
 
-  describe("Metrics endpoint", () => {
-    it("should fetch metrics from core", async () => {
-      const { getMetrics } = await import("../src/guard.js");
-
-      const cfg: GuardConfig = {
-        apiKey: "test-api-key",
-      };
-
-      const metrics = await getMetrics(cfg);
-
-      expect(metrics).toBeDefined();
-      expect(typeof metrics).toBe("object");
-    });
-
-    it("should require apiKey for metrics", async () => {
-      const { getMetrics } = await import("../src/guard.js");
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await expect(getMetrics({} as any)).rejects.toThrow("cfg.apiKey is required");
-    });
-  });
 });

@@ -7,12 +7,11 @@
  * @packageDocumentation
  */
 
-export { anonymize, wrap, createSession, getMetrics } from "./guard.js";
+export { anonymize, wrap, createSession } from "./guard.js";
 export type {
   GuardConfig,
   AnonymizeResult,
   AnonymizeWire,
   RestoreWire,
   AnonymizeOptions,
-  MetricsResponse,
 } from "./types.js";
