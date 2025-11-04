@@ -136,7 +136,6 @@ export async function anonymize(
   };
 }
 
-
 /**
  * Wrap: one-liner that encapsulates anonymize -> caller -> restore
  *

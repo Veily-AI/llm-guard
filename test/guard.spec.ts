@@ -241,5 +241,4 @@ describe("@veily/llm-guard - TDD Suite", () => {
       expect(result.restore).toBeDefined();
     });
   });
-
 });
