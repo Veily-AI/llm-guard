@@ -9,9 +9,6 @@ coverage/
 .vscode/
 .idea/
 
-CONTEXT.md
-PROJECT_SUMMARY.md
-PUBLISH.md
-
 dev/
+test-local.mjs
 

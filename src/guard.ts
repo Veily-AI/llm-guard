@@ -32,7 +32,7 @@ function getPaths(cfg: GuardConfig) {
  */
 function getBaseURL(): string {
   // Production URL (hardcoded) - only override in tests via env var
-  const baseURL = process.env.VEILY_CORE_URL || "https://u3wmtdzmxm.us-east-1.awsapprunner.com";
+  const baseURL = process.env.VEILY_CORE_URL || "https://api.veily.dev";
   return baseURL;
 }
 

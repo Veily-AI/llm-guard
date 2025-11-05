@@ -57,7 +57,7 @@ export class HttpsTransport implements Transport {
     // Base headers
     this.headers = {
       "Content-Type": "application/json",
-      ...(cfg.apiKey ? { "x-api-key": cfg.apiKey } : {}),
+      ...(cfg.apiKey ? { "Authorization": cfg.apiKey } : {}),
       ...(cfg.headers ?? {}),
     };
   }
