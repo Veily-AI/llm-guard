@@ -3,14 +3,16 @@
  * Simulates the behavior of /v1/anonymize and /v1/restore endpoints from the core
  */
 
+import type { AnonymizeRequest, RestoreRequest } from "../types.js";
+
 export class FakeTransport {
   private lastMappingId = "map-123-test";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  postJSON<T>({ path, body }: { path: string; body: any }): Promise<T> {
+  postJSON<T>({ path, body }: { path: string; body: unknown }): Promise<T> {
     if (path.endsWith("/v1/anonymize") || path.endsWith("/custom/anonymize")) {
-      const prompt: string = body.prompt as string;
-      const ttl: number | undefined = body.ttl;
+      const requestBody = body as AnonymizeRequest;
+      const prompt = requestBody.prompt;
+      const ttl = requestBody.ttl;
       let safe = prompt;
       let replaced = 0;
       const types: string[] = [];
@@ -52,8 +54,8 @@ export class FakeTransport {
     }
 
     if (path.endsWith("/v1/restore") || path.endsWith("/custom/restore")) {
-      const out: string = body.output as string;
-      let restored = out;
+      const requestBody = body as RestoreRequest;
+      let restored = requestBody.output;
 
       // Simulate restoration of original data
       restored = restored.replace(/fake\.user@example\.com/gi, "juan.perez@example.com");
@@ -85,8 +87,7 @@ export class FakeTransport {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getTransport(_cfg: any) {
+export function getTransport(_cfg: unknown) {
   return new FakeTransport();
 }
 

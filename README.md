@@ -71,19 +71,9 @@ type GuardConfig = {
   apiKey: string;
 
   // Optional
-  timeoutMs?: number; // Request timeout (default: 2000ms)
   headers?: Record; // Additional HTTP headers
   anonymizePath?: string; // Custom path (default: /v1/anonymize)
   restorePath?: string; // Custom path (default: /v1/restore)
-};
-```
-
-**Example with custom timeout:**
-
-```typescript
-const config = {
-  apiKey: "your-veily-api-key",
-  timeoutMs: 5000, // 5 seconds instead of default 2s
 };
 ```
 
@@ -200,7 +190,6 @@ import { createSession } from "@veily/llm-guard";
 
 const session = createSession({
   apiKey: "your-key",
-  timeoutMs: 3000,
 });
 
 // Process multiple prompts
@@ -294,9 +283,7 @@ const config = {
 try {
   const result = await wrap(prompt, llmCaller, config);
 } catch (error) {
-  if (error.message.includes("timeout")) {
-    console.error("Request timed out");
-  } else if (error.message.includes("401")) {
+  if (error.message.includes("401")) {
     console.error("Invalid API key");
   } else {
     console.error("Error:", error.message);
@@ -378,15 +365,6 @@ Yes. Fully tested (21 tests), type-safe, zero dependencies, OWASP compliant.
 
 ## 🔧 Advanced Configuration
 
-### Custom Timeout
-
-```typescript
-const config = {
-  apiKey: "your-key",
-  timeoutMs: 5000, // 5 seconds (default: 2s)
-};
-```
-
 ### Custom Headers
 
 ```typescript
@@ -463,14 +441,6 @@ await wrap(prompt, caller, { apiKey: "your-key" });
 ### "HTTP error 401: Unauthorized"
 
 Your API key is invalid. Verify with Veily.
-
-### "HTTP/2 request timeout"
-
-Increase timeout:
-
-```typescript
-{ apiKey: "key", timeoutMs: 5000 }
-```
 
 ---
 

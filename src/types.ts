@@ -4,8 +4,6 @@
 export type GuardConfig = {
   /** API key for Bearer authentication (required) */
   apiKey: string;
-  /** Timeout in milliseconds (default: 2000ms) */
-  timeoutMs?: number;
   /** Additional HTTP headers */
   headers?: Record<string, string>;
   /** Custom path for anonymize (default: /v1/anonymize) */
@@ -58,4 +56,28 @@ export type AnonymizeResult = {
 export type AnonymizeOptions = {
   /** Optional custom TTL in seconds (default: 3600 = 1 hour, max: 86400 = 24 hours) */
   ttl?: number;
+};
+
+/**
+ * Request body for /v1/anonymize endpoint
+ */
+export type AnonymizeRequest = {
+  prompt: string;
+  ttl?: number;
+};
+
+/**
+ * Request body for /v1/restore endpoint
+ */
+export type RestoreRequest = {
+  mappingId: string;
+  output: string;
+};
+
+/**
+ * Error response from API
+ */
+export type ErrorResponse = {
+  message?: string;
+  error?: string;
 };

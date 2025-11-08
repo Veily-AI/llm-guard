@@ -30,3 +30,6 @@ cursor_prompt_llm-guard.md
 # Mocks
 **/__mocks__/
 
+dev/
+test-local.mjs
+

@@ -77,7 +77,6 @@ import { createSession } from "@veily/llm-guard";
 
 const session = createSession({
   apiKey: "your-api-key-here",
-  timeoutMs: 2500,
 });
 
 // Process multiple prompts
@@ -188,21 +187,6 @@ const config = {
 };
 
 const result = await wrap("Sensitive data", myLLM, config);
-```
-
-## Example 8: Custom Timeout
-
-Configure request timeout:
-
-```typescript
-import { createSession } from "@veily/llm-guard";
-
-const session = createSession({
-  apiKey: "your-api-key-here",
-  timeoutMs: 5000, // 5 seconds
-});
-
-const result = await session.protect("Test prompt", myLLM);
 ```
 
 ## Complete Working Example
