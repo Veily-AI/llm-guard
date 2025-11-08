@@ -23,7 +23,7 @@ describe("@veily/llm-guard - TDD Suite", () => {
       const { wrap } = await import("../src/guard.js");
 
       const cfg: GuardConfig = { apiKey: "test-api-key" };
-      const result = await wrap("hello world", async (p) => p.toUpperCase(), cfg);
+      const result = await wrap("hello world", (p) => Promise.resolve(p.toUpperCase()), cfg);
       expect(result).toBe("HELLO WORLD");
     });
 
@@ -33,7 +33,7 @@ describe("@veily/llm-guard - TDD Suite", () => {
       const cfg: GuardConfig = { apiKey: "test-api-key" };
       const final = await wrap(
         "My email is juan.perez@example.com and my name is Juan Pérez",
-        async (safe) => `ECHO: ${safe}`,
+        (safe) => Promise.resolve(`ECHO: ${safe}`),
         cfg
       );
 
@@ -50,7 +50,7 @@ describe("@veily/llm-guard - TDD Suite", () => {
       const cfg: GuardConfig = { apiKey: "test-api-key" };
       const final = await wrap(
         "Contact: juan.perez@example.com, +56 9 9876 5432, Juan Pérez",
-        async (safe) => `Data: ${safe}`,
+        (safe) => Promise.resolve(`Data: ${safe}`),
         cfg
       );
 
@@ -64,16 +64,16 @@ describe("@veily/llm-guard - TDD Suite", () => {
 
       const cfg: GuardConfig = { apiKey: "test-api-key" };
       await expect(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        wrap(123 as any, async (p) => p, cfg)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+        wrap(123 as any, (p) => Promise.resolve(p), cfg)
       ).rejects.toThrow("prompt must be a string");
     });
 
     it("should reject config without apiKey", async () => {
       const { wrap } = await import("../src/guard.js");
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await expect(wrap("test", async (p) => p, {} as any)).rejects.toThrow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      await expect(wrap("test", (p) => Promise.resolve(p), {} as any)).rejects.toThrow(
         "cfg.apiKey is required"
       );
     });
@@ -129,9 +129,8 @@ describe("@veily/llm-guard - TDD Suite", () => {
 
       const cfg: GuardConfig = { apiKey: "test-api-key" };
       const session = createSession(cfg);
-      const result = await session.protect(
-        "Contact: juan.perez@example.com",
-        async (safe) => `Response: ${safe}`
+      const result = await session.protect("Contact: juan.perez@example.com", (safe) =>
+        Promise.resolve(`Response: ${safe}`)
       );
 
       expect(result).toContain("juan.perez@example.com");
@@ -156,14 +155,14 @@ describe("@veily/llm-guard - TDD Suite", () => {
       const { anonymize } = await import("../src/guard.js");
 
       const cfg: GuardConfig = { apiKey: "test-api-key" };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       await expect(anonymize(null as any, cfg)).rejects.toThrow("prompt must be a string");
     });
 
     it("should validate apiKey in config", async () => {
       const { anonymize } = await import("../src/guard.js");
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       await expect(anonymize("test", { apiKey: "" } as any)).rejects.toThrow(
         "cfg.apiKey is required"
       );
@@ -194,18 +193,7 @@ describe("@veily/llm-guard - TDD Suite", () => {
         restorePath: "/custom/restore",
       };
 
-      await expect(wrap("test", async (p) => p, customCfg)).resolves.toBeDefined();
-    });
-
-    it("should accept custom timeout", async () => {
-      const { wrap } = await import("../src/guard.js");
-
-      const timeoutCfg: GuardConfig = {
-        apiKey: "test-api-key",
-        timeoutMs: 5000,
-      };
-
-      await expect(wrap("test", async (p) => p, timeoutCfg)).resolves.toBeDefined();
+      await expect(wrap("test", (p) => Promise.resolve(p), customCfg)).resolves.toBeDefined();
     });
 
     it("should work without any environment variables", async () => {
@@ -216,7 +204,7 @@ describe("@veily/llm-guard - TDD Suite", () => {
       };
 
       // Should work with hardcoded production URL (env var only for tests)
-      await expect(wrap("test", async (p) => p, cfg)).resolves.toBeDefined();
+      await expect(wrap("test", (p) => Promise.resolve(p), cfg)).resolves.toBeDefined();
     });
   });
 

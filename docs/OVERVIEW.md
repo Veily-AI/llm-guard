@@ -163,7 +163,6 @@
 ```typescript
 type GuardConfig = {
   apiKey: string; // Required: Bearer token for authentication
-  timeoutMs?: number; // Optional: Request timeout (default: 2000ms)
   headers?: Record; // Optional: Additional HTTP headers
   anonymizePath?: string; // Optional: Custom path (default: /v1/anonymize)
   restorePath?: string; // Optional: Custom path (default: /v1/restore)
@@ -214,7 +213,6 @@ type AnonymizeResult = {
 
 - ✅ HTTP/2 with keep-alive (persistent connections)
 - ✅ Connection pool per origin (singleton pattern)
-- ✅ Configurable timeouts with automatic cleanup
 - ✅ Robust error handling with context
 - ✅ Automatic JSON serialization/deserialization
 - ✅ Support for GET and POST methods
@@ -226,7 +224,6 @@ class H2Transport implements Transport {
   private client: http2.ClientHttp2Session;
   private basePath: string;
   private headers: Record<string, string>;
-  private timeoutMs: number;
 
   constructor(cfg: GuardConfig & { baseURL: string });
 
@@ -444,25 +441,6 @@ const result1 = await session.protect(...); // ~100ms (first)
 const result2 = await session.protect(...); // ~30ms (reused)
 ```
 
-### 4. Configurable Timeouts per Environment
-
-```typescript
-// Development: generous timeout for debugging
-const devConfig = { apiKey: "...", timeoutMs: 10000 };
-
-// Production: aggressive timeout for fast failure
-const prodConfig = { apiKey: "...", timeoutMs: 1500 };
-
-// Staging: balanced
-const stagingConfig = { apiKey: "...", timeoutMs: 3000 };
-```
-
-**Recommendation**: Set timeout based on your SLA
-
-- P99 < 50ms → `timeoutMs: 1000`
-- P99 < 100ms → `timeoutMs: 2000`
-- P99 < 200ms → `timeoutMs: 3000`
-
 ---
 
 ## 🔐 Security
@@ -498,7 +476,7 @@ if (options?.ttl && (options.ttl < 1 || options.ttl > 86400)) {
 throw new Error(`Failed to connect to ${baseURL}: ${error.stack}`);
 
 // ✅ GOOD: Generic, no sensitive info
-throw new Error("HTTP request timeout");
+throw new Error("HTTP request failed");
 
 // ❌ BAD: Leaks PII
 console.log(`Anonymizing: "${prompt}"`);
@@ -667,7 +645,7 @@ try {
 } catch (error) {
   metrics.increment("requests", 1, {
     status: "error",
-    type: error.message.includes("timeout") ? "timeout" : "other",
+    type: error.message.includes("401") ? "unauthorized" : "other",
   });
 }
 ```

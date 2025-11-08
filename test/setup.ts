@@ -4,16 +4,18 @@
  */
 
 import { jest } from "@jest/globals";
+import type { AnonymizeRequest, RestoreRequest } from "../src/types.js";
 
 // Mock the http module before any import
 jest.unstable_mockModule("../src/http.js", () => {
   return {
     getTransport: jest.fn(() => {
       return {
-        postJSON: jest.fn(async ({ path, body }: { path: string; body: any }) => {
+        postJSON: jest.fn(({ path, body }: { path: string; body: unknown }) => {
           if (path.endsWith("/v1/anonymize") || path.endsWith("/custom/anonymize")) {
-            const prompt: string = body.prompt as string;
-            const ttl: number | undefined = body.ttl;
+            const requestBody = body as AnonymizeRequest;
+            const prompt = requestBody.prompt;
+            const ttl = requestBody.ttl;
             let safe = prompt;
             let replaced = 0;
             const types: string[] = [];
@@ -44,36 +46,36 @@ jest.unstable_mockModule("../src/http.js", () => {
               types.push("phone");
             }
 
-            return {
+            return Promise.resolve({
               safePrompt: safe,
               mappingId: `map_${Math.random().toString(36).slice(2, 10)}`,
               stats: replaced > 0 ? { replaced, types } : undefined,
-            };
+            });
           }
 
           if (path.endsWith("/v1/restore") || path.endsWith("/custom/restore")) {
-            const out: string = body.output as string;
-            let restored = out;
+            const requestBody = body as RestoreRequest;
+            let restored = requestBody.output;
 
             // Simulate restoration of original data
             restored = restored.replace(/fake\.user@example\.com/gi, "juan.perez@example.com");
             restored = restored.replace(/Fake Name/g, "Juan Pérez");
             restored = restored.replace(/\+XX X XXXX XXXX/g, "+56 9 9876 5432");
 
-            return { output: restored };
+            return Promise.resolve({ output: restored });
           }
 
           throw new Error(`Path not supported in mock: ${path}`);
         }),
-        getJSON: jest.fn(async ({ path }: { path: string }) => {
+        getJSON: jest.fn(({ path }: { path: string }) => {
           if (path.endsWith("/v1/metrics")) {
-            return {
+            return Promise.resolve({
               totalCycles: 42,
               successfulDeliveries: 40,
               completedCycles: 38,
               totalPiiReplaced: 156,
               piiTypes: ["email", "name", "phone"],
-            };
+            });
           }
 
           throw new Error(`Path not supported in mock: ${path}`);

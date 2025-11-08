@@ -39,7 +39,6 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
 feat: add support for custom paths
-fix: resolve timeout issue
 docs: update README examples
 test: add tests for createSession
 chore: update dependencies

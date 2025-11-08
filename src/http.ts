@@ -3,19 +3,17 @@
  *
  * Features:
  * - Persistent connection (reuse by origin)
- * - Configurable timeout
  * - Connection pool to avoid repeated handshakes
  * - Compatible with AWS App Runner and most cloud providers
  */
 
 import https from "https";
 import { URL } from "url";
-import { GuardConfig } from "./types.js";
+import { GuardConfig, ErrorResponse } from "./types.js";
 
 type PostOptions = {
   path: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  body: any;
+  body: unknown;
 };
 
 type GetOptions = {
@@ -35,7 +33,6 @@ export class HttpsTransport implements Transport {
   private agent: https.Agent;
   private baseURL: URL;
   private headers: Record<string, string>;
-  private timeoutMs: number;
 
   constructor(cfg: GuardConfig & { baseURL: string }) {
     if (!cfg?.baseURL) {
@@ -43,7 +40,6 @@ export class HttpsTransport implements Transport {
     }
 
     this.baseURL = new URL(cfg.baseURL);
-    this.timeoutMs = cfg.timeoutMs ?? 2000;
 
     // Create agent with keep-alive for connection reuse
     this.agent = new https.Agent({
@@ -51,13 +47,12 @@ export class HttpsTransport implements Transport {
       keepAliveMsecs: 1000,
       maxSockets: 50,
       maxFreeSockets: 10,
-      timeout: this.timeoutMs,
     });
 
     // Base headers
     this.headers = {
       "Content-Type": "application/json",
-      ...(cfg.apiKey ? { "Authorization": cfg.apiKey } : {}),
+      ...(cfg.apiKey ? { Authorization: cfg.apiKey } : {}),
       ...(cfg.headers ?? {}),
     };
   }
@@ -73,7 +68,6 @@ export class HttpsTransport implements Transport {
         method: "GET",
         agent: this.agent,
         headers: this.headers,
-        timeout: this.timeoutMs,
       };
 
       const req = https.request(url, options, (res) => {
@@ -91,7 +85,7 @@ export class HttpsTransport implements Transport {
           if (statusCode >= 400) {
             let errorMsg = `HTTP ${statusCode}`;
             try {
-              const errBody = JSON.parse(body);
+              const errBody: ErrorResponse = JSON.parse(body) as ErrorResponse;
               errorMsg = errBody.message || errBody.error || errorMsg;
             } catch {
               errorMsg = body || errorMsg;
@@ -104,19 +98,13 @@ export class HttpsTransport implements Transport {
           try {
             resolve(JSON.parse(body) as T);
           } catch {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            resolve(body as any);
+            resolve(body as unknown as T);
           }
         });
       });
 
       req.on("error", (err) => {
         reject(err);
-      });
-
-      req.on("timeout", () => {
-        req.destroy();
-        reject(new Error("HTTP request timeout"));
       });
 
       req.end();
@@ -138,7 +126,6 @@ export class HttpsTransport implements Transport {
           ...this.headers,
           "Content-Length": Buffer.byteLength(bodyStr),
         },
-        timeout: this.timeoutMs,
       };
 
       const req = https.request(url, options, (res) => {
@@ -156,7 +143,7 @@ export class HttpsTransport implements Transport {
           if (statusCode >= 400) {
             let errorMsg = `HTTP ${statusCode}`;
             try {
-              const errBody = JSON.parse(responseBody);
+              const errBody: ErrorResponse = JSON.parse(responseBody) as ErrorResponse;
               errorMsg = errBody.message || errBody.error || errorMsg;
             } catch {
               errorMsg = responseBody || errorMsg;
@@ -169,19 +156,13 @@ export class HttpsTransport implements Transport {
           try {
             resolve(JSON.parse(responseBody) as T);
           } catch {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            resolve(responseBody as any);
+            resolve(responseBody as unknown as T);
           }
         });
       });
 
       req.on("error", (err) => {
         reject(err);
-      });
-
-      req.on("timeout", () => {
-        req.destroy();
-        reject(new Error("HTTP request timeout"));
       });
 
       req.write(bodyStr);
