@@ -1,6 +1,6 @@
 {
   "name": "@veily/llm-guard",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "TypeScript SDK to anonymize PII in LLM prompts. Zero dependencies, HTTPS keep-alive, works with OpenAI/Anthropic/etc.",
   "type": "module",
   "main": "dist/index.js",
@@ -16,7 +16,8 @@
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "prepublishOnly": "npm run build && npm test",
     "lint": "eslint src test --ext .ts",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"docs/**/*.md\" \"*.md\" \".prettierrc.json\" \"tsconfig*.json\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"docs/**/*.md\" \"*.md\" \".prettierrc.json\" \"tsconfig*.json\""
   },
   "keywords": [
     "llm",

@@ -1,4 +1,27 @@
 /**
+ * Interface for encrypted field structure
+ * Used for optional transit encryption of prompts/output
+ */
+export interface EncryptableField {
+  /** The encrypted value (base64 encoded) */
+  value: string;
+  /** True if the value is encrypted */
+  encrypted: true;
+  /** Key ID used for encryption (required if encrypted: true) */
+  keyId: string;
+}
+
+/**
+ * Response from /v1/transit-crypto/inbound-public-key endpoint
+ */
+export type InboundPublicKeyResponse = {
+  keyId: string;
+  algorithm: string;
+  hashAlgorithm: string;
+  publicKey: string;
+};
+
+/**
  * Configuration for the HTTP/2 guard client
  */
 export type GuardConfig = {
@@ -10,6 +33,8 @@ export type GuardConfig = {
   anonymizePath?: string;
   /** Custom path for restore (default: /v1/restore) */
   restorePath?: string;
+  /** Optional: RSA private key in PEM format for decrypting responses. If provided, publicKey and keyId will be fetched automatically from the API. */
+  privateKey?: string;
 };
 
 /**
@@ -31,8 +56,16 @@ export type AnonymizeWire = {
  * Response from the /v1/restore endpoint
  */
 export type RestoreWire = {
-  /** De-anonymized output with original data */
-  output: string;
+  /** De-anonymized output with original data - can be plain text or EncryptableField */
+  output: string | EncryptableField;
+  /** True if output is encrypted */
+  encrypted?: boolean;
+  /** Key ID used for encryption (if encrypted) */
+  keyId?: string;
+  /** Algorithm used for encryption (if encrypted) */
+  algorithm?: string;
+  /** Hash algorithm used for encryption (if encrypted) */
+  hashAlgorithm?: string;
 };
 
 /**
@@ -60,18 +93,26 @@ export type AnonymizeOptions = {
 
 /**
  * Request body for /v1/anonymize endpoint
+ * Supports both plain text and encrypted prompts (backward compatible)
  */
 export type AnonymizeRequest = {
-  prompt: string;
+  /** Prompt as plain text or EncryptableField object */
+  prompt: string | EncryptableField;
   ttl?: number;
 };
 
 /**
  * Request body for /v1/restore endpoint
+ * Supports both plain text and encrypted output (backward compatible)
  */
 export type RestoreRequest = {
   mappingId: string;
-  output: string;
+  /** Output as plain text or EncryptableField object */
+  output: string | EncryptableField;
+  /** Optional: Request encrypted response */
+  encryptResponse?: boolean;
+  /** Optional: Partner key ID for response encryption */
+  partnerKeyId?: string;
 };
 
 /**

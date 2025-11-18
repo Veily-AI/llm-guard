@@ -65,8 +65,8 @@ npm run format
 - **Naming**: Descriptive and in English
 
 ```typescript
-describe("wrap() - One-liner API", () => {
-  it("should process prompt without PII correctly", async () => {
+describe('wrap() - One-liner API', () => {
+  it('should process prompt without PII correctly', async () => {
     // ...
   });
 });

@@ -7,9 +7,9 @@
  * - Compatible with AWS App Runner and most cloud providers
  */
 
-import https from "https";
-import { URL } from "url";
-import { GuardConfig, ErrorResponse } from "./types.js";
+import https from 'https';
+import { URL } from 'url';
+import { GuardConfig, ErrorResponse } from './types.js';
 
 type PostOptions = {
   path: string;
@@ -36,7 +36,7 @@ export class HttpsTransport implements Transport {
 
   constructor(cfg: GuardConfig & { baseURL: string }) {
     if (!cfg?.baseURL) {
-      throw new Error("baseURL is required");
+      throw new Error('baseURL is required');
     }
 
     this.baseURL = new URL(cfg.baseURL);
@@ -51,7 +51,7 @@ export class HttpsTransport implements Transport {
 
     // Base headers
     this.headers = {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...(cfg.apiKey ? { Authorization: cfg.apiKey } : {}),
       ...(cfg.headers ?? {}),
     };
@@ -65,7 +65,7 @@ export class HttpsTransport implements Transport {
       const url = new URL(path, this.baseURL);
 
       const options: https.RequestOptions = {
-        method: "GET",
+        method: 'GET',
         agent: this.agent,
         headers: this.headers,
       };
@@ -73,12 +73,12 @@ export class HttpsTransport implements Transport {
       const req = https.request(url, options, (res) => {
         const chunks: Buffer[] = [];
 
-        res.on("data", (chunk) => {
+        res.on('data', (chunk) => {
           chunks.push(chunk as Buffer);
         });
 
-        res.on("end", () => {
-          const body = Buffer.concat(chunks).toString("utf8");
+        res.on('end', () => {
+          const body = Buffer.concat(chunks).toString('utf8');
           const statusCode = res.statusCode || 0;
 
           // Handle errors
@@ -103,7 +103,7 @@ export class HttpsTransport implements Transport {
         });
       });
 
-      req.on("error", (err) => {
+      req.on('error', (err) => {
         reject(err);
       });
 
@@ -120,23 +120,23 @@ export class HttpsTransport implements Transport {
       const bodyStr = JSON.stringify(body ?? {});
 
       const options: https.RequestOptions = {
-        method: "POST",
+        method: 'POST',
         agent: this.agent,
         headers: {
           ...this.headers,
-          "Content-Length": Buffer.byteLength(bodyStr),
+          'Content-Length': Buffer.byteLength(bodyStr),
         },
       };
 
       const req = https.request(url, options, (res) => {
         const chunks: Buffer[] = [];
 
-        res.on("data", (chunk) => {
+        res.on('data', (chunk) => {
           chunks.push(chunk as Buffer);
         });
 
-        res.on("end", () => {
-          const responseBody = Buffer.concat(chunks).toString("utf8");
+        res.on('end', () => {
+          const responseBody = Buffer.concat(chunks).toString('utf8');
           const statusCode = res.statusCode || 0;
 
           // Handle errors
@@ -161,7 +161,7 @@ export class HttpsTransport implements Transport {
         });
       });
 
-      req.on("error", (err) => {
+      req.on('error', (err) => {
         reject(err);
       });
 
