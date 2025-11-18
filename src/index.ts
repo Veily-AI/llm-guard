@@ -7,11 +7,20 @@
  * @packageDocumentation
  */
 
-export { anonymize, wrap, createSession } from "./guard.js";
+export { anonymize, wrap, createSession } from './guard.js';
 export type {
   GuardConfig,
   AnonymizeResult,
   AnonymizeWire,
   RestoreWire,
   AnonymizeOptions,
-} from "./types.js";
+  EncryptableField,
+} from './types.js';
+export {
+  encryptWithPublicKey,
+  decryptWithPrivateKey,
+  validatePublicKey,
+  validatePrivateKey,
+  createEncryptableField,
+} from './crypto.js';
+export type { EncryptableField as CryptoEncryptableField } from './crypto.js';
